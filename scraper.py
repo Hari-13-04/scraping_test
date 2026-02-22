@@ -50,7 +50,15 @@ URL_LIST = input_df["Product URL"].tolist()
 # ==========================================================
 # Selenium Setup
 # ==========================================================
-driver = Driver(undetected=True,uc=True, incognito=True, headless=True)
+driver = Driver(
+    browser = "Chrome",
+    headless = False,
+    incognito = True,
+    block_images =True,
+    server = "selenium",
+    port = 4444,
+    protocol = "http"
+)
 
 stealth(
     driver,
