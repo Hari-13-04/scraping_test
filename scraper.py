@@ -37,7 +37,7 @@ if args.output:
     output_file = args.output
 else:
     base = os.path.splitext(os.path.basename(input_file))[0]
-    output_file = f"{base}_output.xlsx"
+    output_file = base + "_output.xlsx"
 
 input_df = pd.read_excel(input_file)
 
