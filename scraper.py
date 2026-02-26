@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import time, json,re, pandas as pd,requests,argparse,os
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
@@ -41,8 +42,8 @@ else:
 
 input_df = pd.read_excel(input_file)
 
-if "Product URL" not in input_df.columns:
-    raise Exception("❌ Excel must have a 'Product URL' column")
+if not "Product URL" in input_df.columns:
+    raise Exception("Excel must have a 'Product URL' column")
 
 URL_LIST = input_df["Product URL"].tolist()
 
@@ -302,7 +303,7 @@ def build_excel(rows, output_name="sephora_output.xlsx"):
     df = df.reindex(columns=FINAL_HEADERS)
 
     df.to_excel(output_name, index=False)
-    print("✅ Excel saved as:", output_name)
+    print("Excel saved as:", output_name)
 
 
 # Build final Excel

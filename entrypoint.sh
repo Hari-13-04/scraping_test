@@ -12,7 +12,7 @@ echo "======================================" | tee "$LOG_FILE"
 echo "Container: $FNAME (Server $SERVER_ID)" | tee -a "$LOG_FILE"
 echo "======================================" | tee -a "$LOG_FILE"
 
-if python /app/scraper.py --input "$INPUT_FILE" --output "$OUTPUT_FILE" 2>&1 | tee -a "$LOG_FILE"; then
+if python3 /app/scraper.py --input "$INPUT_FILE" --output "$OUTPUT_FILE" 2>&1 | tee -a "$LOG_FILE"; then
     echo "SUCCESS: $FNAME" | tee -a "$LOG_FILE"
     EXIT_CODE=0
 else
