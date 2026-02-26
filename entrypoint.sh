@@ -20,15 +20,16 @@ else
     EXIT_CODE=1
 fi
 
-if [ $EXIT_CODE -eq 0 ] && [ -f "$OUTPUT_FILE" ]; then
-    echo "Uploading output to S3..." | tee -a "$LOG_FILE"
-    aws s3 cp "$OUTPUT_FILE" \
-        "s3://${S3_BUCKET}/${S3_OUTPUT_PREFIX}${BASE}_output.xlsx" \
-        --region "$AWS_REGION" 2>&1 | tee -a "$LOG_FILE"
-    echo "Upload complete." | tee -a "$LOG_FILE"
-else
-    echo "Skipping S3 upload (exit=$EXIT_CODE, file_exists=$(test -f "$OUTPUT_FILE" && echo yes || echo no))" | tee -a "$LOG_FILE"
-fi
+# if [ $EXIT_CODE -eq 0 ] && [ -f "$OUTPUT_FILE" ]; then
+#     echo "Uploading output to S3..." | tee -a "$LOG_FILE"
+#     echo "Upload complete." | tee -a "$LOG_FILE"
+# else
+#     echo "Skipping S3 upload (exit=$EXIT_CODE, file_exists=$(test -f "$OUTPUT_FILE" && echo yes || echo no))" | tee -a "$LOG_FILE"
+# fi
+
+aws s3 cp "$OUTPUT_FILE" \
+    "s3://${S3_BUCKET}/${S3_OUTPUT_PREFIX}${BASE}_output.xlsx" \
+    --region "$AWS_REGION" 2>&1 | tee -a "$LOG_FILE"
 
 # Always upload log
 aws s3 cp "$LOG_FILE" \
