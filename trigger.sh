@@ -76,9 +76,8 @@ aws s3 ls "s3://$S3_BUCKET/$S3_INPUT_PREFIX" --region "$AWS_REGION" \
 echo "All S3 files:"; cat /tmp/all_files.txt
 
 python3 - << PYEOF
-import os
-server_id     = int(os.environ.get("SERVER_ID", 0))
-total_servers = int(os.environ.get("TOTAL_SERVERS", 1))
+server_id     = int("$SERVER_ID")
+total_servers = int("$TOTAL_SERVERS")
 
 with open('/tmp/all_files.txt') as f:
     all_files = [l.strip() for l in f if l.strip()]
