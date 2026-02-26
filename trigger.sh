@@ -76,17 +76,16 @@ aws s3 ls "s3://$S3_BUCKET/$S3_INPUT_PREFIX" --region "$AWS_REGION" \
 echo "All S3 files:"; cat /tmp/all_files.txt
 
 python3 - << PYEOF
-server_id        = int("$SERVER_ID")
-files_per_server = int("$FILES_PER_SERVER")
+server_id     = int("$SERVER_ID")
+total_servers = int("$TOTAL_SERVERS")
 
 with open('/tmp/all_files.txt') as f:
     all_files = [l.strip() for l in f if l.strip()]
 
-start_idx = server_id * files_per_server
-end_idx   = start_idx + files_per_server
-my_files  = all_files[start_idx:end_idx]
+# round-robin assignment
+my_files = [f for i, f in enumerate(all_files) if i % total_servers == server_id]
 
-print(f"Server {server_id}: slice [{start_idx}:{end_idx}] = {my_files}")
+print(f"Server {server_id}: total={len(all_files)} | assigned={len(my_files)} | files={my_files}")
 
 with open('/tmp/my_files.txt', 'w') as f:
     f.write('\n'.join(my_files) + ('\n' if my_files else ''))
@@ -140,10 +139,10 @@ while IFS= read -r fname; do
         -e SE_VNC_NO_PASSWORD=1 \
         selenium/standalone-chrome:latest
 
-    echo "  Waiting for Selenium..."
+    echo "  Waiting for Scraping..."
     for i in $(seq 1 30); do
         docker exec "selenium_${SAFE}" curl -sf http://localhost:4444/wd/hub/status \
-            > /dev/null 2>&1 && echo "  Selenium ready (attempt $i)" && break
+            > /dev/null 2>&1 && echo "  Scraping ready (attempt $i)" && break
         sleep 2
     done
 
