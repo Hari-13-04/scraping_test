@@ -39,7 +39,7 @@ URL_LIST = df["Product URL"].tolist()
 # Playwright setup
 # ============================
 play = sync_playwright().start()
-browser = play.chromium.launch(headless=True)
+browser = play.chromium.launch(headless=False)
 context = browser.new_context(
     user_agent=headers["user-agent"],
     viewport={"width": 1920, "height": 1080}
