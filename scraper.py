@@ -2,7 +2,6 @@
 import time, json,re, pandas as pd,requests,argparse,os
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
-from selenium_stealth import stealth
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -52,23 +51,15 @@ URL_LIST = input_df["Product URL"].tolist()
 # Selenium Setup
 # ==========================================================
 driver = Driver(
-    browser = "Chrome",
-    headless = False,
-    incognito = True,
-    block_images =True,
-    server = "selenium-chrome",
-    port = 4444,
-    protocol = "http"
-)
-
-stealth(
-    driver,
-    languages=["en-US", "en"],
-    vendor="Google Inc.",
-    platform="Win32",
-    webgl_vendor="Intel Inc.",
-    renderer="Intel Iris OpenGL Engine",
-    fix_hairline=True,
+    browser="chrome",
+    uc=True,
+    incognito=True,
+    headless=False,
+    block_images=True,
+    agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    chromium_arg="--disable-blink-features=AutomationControlled",
+    server="selenium-chrome",
+    port=4444,
 )
 
 wait = WebDriverWait(driver, 10)
