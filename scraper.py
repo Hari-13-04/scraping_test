@@ -56,7 +56,7 @@ driver = Driver(
     headless = False,
     incognito = True,
     block_images =True,
-    server = "selenium",
+    server = "selenium-chrome",
     port = 4444,
     protocol = "http"
 )
