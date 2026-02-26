@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ---- Install SeleniumBase drivers ----
 RUN seleniumbase install chromedriver
 
+RUN playwright install chromium
 # ---- Install AWS CLI v2 ----
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip \
     && unzip /tmp/awscliv2.zip -d /tmp \
