@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/playwright/python:v1.58.0-jammy
 
 WORKDIR /app
 
-# ---- System deps (Chrome / Selenium / Playwright) ----
+# ---- System deps ----
 RUN apt-get update && apt-get install -y \
     xvfb \
     curl \
@@ -26,6 +26,15 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     libxfixes3 \
     ca-certificates \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- Install Google Chrome (REQUIRED for SeleniumBase UC) ----
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
+       > /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
 # ---- Python deps ----
@@ -36,10 +45,10 @@ RUN pip install --no-cache-dir -r requirements.txt \
         selenium-stealth \
         undetected-chromedriver
 
-# ---- Ensure Playwright browsers present ----
+# ---- Ensure Playwright browsers ----
 RUN playwright install --with-deps chromium
 
-# ---- SeleniumBase driver (optional but ok) ----
+# ---- SeleniumBase driver ----
 RUN seleniumbase install chromedriver
 
 # ---- AWS CLI v2 ----
