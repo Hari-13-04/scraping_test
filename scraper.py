@@ -58,7 +58,11 @@ def scrape_product(BASEURL):
     soup = BeautifulSoup(html, "html.parser")
 
     # -------- VARIANTS --------
-    buttons = page.query_selector_all('[data-comp="SwatchGroup "] button')
+    try:
+        buttons = page.query_selector_all('[data-comp="SwatchGroup "] button')
+    except:
+        print("No swatch groups")
+        buttons = []
     url_collections = []
 
     if buttons:
