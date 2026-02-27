@@ -39,7 +39,11 @@ URL_LIST = df["Product URL"].tolist()
 # Playwright setup
 # ============================
 play = sync_playwright().start()
-browser = play.chromium.launch(headless=False)
+browser = play.chromium.launch(headless=False, args=[
+        "--disable-blink-features=AutomationControlled",
+        "--no-sandbox",
+        "--disable-dev-shm-usage"
+    ])
 context = browser.new_context(
     user_agent=headers["user-agent"],
     viewport={"width": 1920, "height": 1080}
@@ -51,7 +55,7 @@ page = context.new_page()
 # ============================
 def scrape_product(BASEURL):
     print("Scraping =>", BASEURL)
-    page.goto(BASEURL, timeout=60000)
+    page.goto(BASEURL, timeout=60000, wait_until="domcontentloaded")
     page.wait_for_timeout(3000)
 
     html = page.content()
