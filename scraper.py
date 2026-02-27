@@ -38,7 +38,7 @@ if args.output:
 else:
     base = os.path.splitext(os.path.basename(input_file))[0]
     output_name = base + "_output.xlsx"
-input_df = pd.read_excel(input_file+".xlsx")
+input_df = pd.read_excel(input_file)
 
 if "Product URL" not in input_df.columns:
     raise Exception("❌ Excel must have a 'Product URL' column")
