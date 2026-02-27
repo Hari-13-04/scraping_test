@@ -9,6 +9,6 @@ selenium>=4.15.0
 seleniumbase>=4.27.0
 selenium-stealth>=1.0.6
 webdriver-manager>=4.0.1
-
 # Playwright
 playwright>=1.48.0
+playwright-stealth

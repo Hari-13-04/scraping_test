@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/playwright/python:v1.58.0-jammy
 
 WORKDIR /app
 
-# ---- System deps for ALL browsers (selenium/playwright/chrome) ----
+# ---- System deps (Chrome / Selenium / Playwright) ----
 RUN apt-get update && apt-get install -y \
     xvfb \
     curl \
@@ -25,13 +25,21 @@ RUN apt-get update && apt-get install -y \
     libx11-xcb1 \
     libxext6 \
     libxfixes3 \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # ---- Python deps ----
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir \
+        playwright-stealth \
+        selenium-stealth \
+        undetected-chromedriver
 
-# ---- SeleniumBase driver ----
+# ---- Ensure Playwright browsers present ----
+RUN playwright install --with-deps chromium
+
+# ---- SeleniumBase driver (optional but ok) ----
 RUN seleniumbase install chromedriver
 
 # ---- AWS CLI v2 ----
@@ -44,5 +52,8 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awsc
 COPY scraper.py .
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+ENV PYTHONUNBUFFERED=1
+ENV DISPLAY=:99
 
 CMD ["/entrypoint.sh"]

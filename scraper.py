@@ -16,7 +16,7 @@ headers = {
 import time, json, re, pandas as pd, requests, argparse, os
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
-
+from playwright_stealth import stealth_sync
 
 # ============================
 # Args
@@ -49,12 +49,14 @@ context = browser.new_context(
     viewport={"width": 1920, "height": 1080}
 )
 page = context.new_page()
+stealth_sync(page)
 
 # ============================
 # Scrape function
 # ============================
 def scrape_product(BASEURL):
     print("Scraping =>", BASEURL)
+
     page.goto(BASEURL, timeout=60000, wait_until="domcontentloaded")
     page.wait_for_timeout(3000)
 
