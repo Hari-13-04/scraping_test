@@ -62,6 +62,7 @@ stealth(
     languages=["en-US","en"],
     vendor="Google Inc.",
     platform="Win32",
+    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
     webgl_vendor="Intel Inc.",
     renderer="Intel Iris OpenGL",
     fix_hairline=True
