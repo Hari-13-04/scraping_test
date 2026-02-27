@@ -68,13 +68,16 @@ while IFS= read -r fname; do
 
     SAFE=$(echo "$fname" | tr '. -' '_' | tr '[:upper:]' '[:lower:]')
 
-    # ── Start Selenium ───────────────────
+
+    # Start Selenium with noVNC on port 7900
     docker run -d \
         --name "selenium_${SAFE}" \
-        --network scraper-net \
         --shm-size="2g" \
+        -p 4444:4444 \
+        -p 7900:7900 \
         -e SE_NODE_MAX_SESSIONS=1 \
         -e SE_SESSION_REQUEST_TIMEOUT=300 \
+        -e SE_VNC_NO_PASSWORD=1 \
         selenium/standalone-chrome:latest
 
     echo "Waiting for Selenium..."
@@ -84,24 +87,24 @@ while IFS= read -r fname; do
         sleep 2
     done
 
-    # ── Run scraper ──────────────────────
     docker run --name "scraper_${SAFE}" \
-        --network scraper-net \
+        --link "selenium_${SAFE}:selenium-chrome" \
         -v "/home/ubuntu/scraper/input/$fname:/app/input/$fname" \
         -v "/home/ubuntu/scraper/output:/app/output" \
         -v "/home/ubuntu/scraper/logs:/app/logs" \
-        -e INPUT_FILE="/app/input/$fname" \
-        -e OUTPUT_DIR="/app/output" \
-        -e S3_BUCKET="$S3_BUCKET" \
-        -e S3_OUTPUT_PREFIX="$S3_OUTPUT_PREFIX" \
-        -e AWS_REGION="$AWS_REGION" \
-        -e AWS_DEFAULT_REGION="$AWS_REGION" \
-        -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
-        -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
-        -e AWS_SESSION_TOKEN="$AWS_SESSION_TOKEN" \
-        -e SERVER_ID="$SERVER_ID" \
-        -e SELENIUM_HUB_URL="http://selenium_${SAFE}:4444/wd/hub" \
+        -e "INPUT_FILE=/app/input/$fname" \
+        -e "OUTPUT_DIR=/app/output" \
+        -e "S3_BUCKET=$S3_BUCKET" \
+        -e "S3_OUTPUT_PREFIX=$S3_OUTPUT_PREFIX" \
+        -e "AWS_REGION=$AWS_REGION" \
+        -e "AWS_DEFAULT_REGION=$AWS_REGION" \
+        -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
+        -e "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \
+        -e "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN" \
+        -e "SERVER_ID=$SERVER_ID" \
+        -e "SELENIUM_HUB_URL=http://selenium-chrome:4444/wd/hub" \
         scraper-image
+
 
     EXIT_CODE=$(docker inspect "scraper_${SAFE}" --format='{{.State.ExitCode}}')
 
