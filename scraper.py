@@ -54,53 +54,54 @@ page = context.new_page()
 # ============================
 def scrape_product(BASEURL):
     print("Scraping =>", BASEURL)
-
-    page.goto(BASEURL, timeout=60000, wait_until="domcontentloaded")
-    page.wait_for_timeout(3000)
-
-    html = page.content()
-    soup = BeautifulSoup(html, "html.parser")
-
-    # -------- VARIANTS --------
     try:
-        buttons = page.query_selector_all('[data-comp="SwatchGroup "] button')
+        page.goto(BASEURL, timeout=60000, wait_until="domcontentloaded")
+        page.wait_for_timeout(3000)
+
+        html = page.content()
+        soup = BeautifulSoup(html, "html.parser")
+
+        # -------- VARIANTS --------
+        try:
+            buttons = page.query_selector_all('[data-comp="SwatchGroup "] button')
+        except:
+            print("No swatch groups")
+            buttons = []
+        url_collections = []
+
+        if buttons:
+            for button in buttons:
+                variant_url = BASEURL
+                html_btn = button.inner_html()
+
+                data_at = button.get_attribute("data-at") or ""
+                if "selected" not in data_at:
+                    soup_btn = BeautifulSoup(html_btn, "html.parser")
+                    img_tag = soup_btn.select_one("img")
+
+                    if img_tag and img_tag.get("src"):
+                        digits = re.findall(r"\d+", img_tag["src"])
+                        if digits:
+                            variant_url = f"{BASEURL}?skuId={digits[0]}"
+
+                    else:
+                        aria = button.get_attribute("aria-label")
+                        page_html = page.content()
+
+                        sku_match = None
+                        if aria:
+                            sku_match = re.findall(rf'displayName":"(\d+) {aria}?","freeShippingMessage', page_html)
+                            if not sku_match:
+                                sku_match = re.findall(rf'displayName":"(\d+) {aria}?","freeShippingType', page_html)
+
+                        if sku_match:
+                            variant_url = f"{BASEURL}?skuId={sku_match[0]}"
+
+                url_collections.append(variant_url)
+        else:
+            url_collections.append(BASEURL)
     except:
-        print("No swatch groups")
-        buttons = []
-    url_collections = []
-
-    if buttons:
-        for button in buttons:
-            variant_url = BASEURL
-            html_btn = button.inner_html()
-
-            data_at = button.get_attribute("data-at") or ""
-            if "selected" not in data_at:
-                soup_btn = BeautifulSoup(html_btn, "html.parser")
-                img_tag = soup_btn.select_one("img")
-
-                if img_tag and img_tag.get("src"):
-                    digits = re.findall(r"\d+", img_tag["src"])
-                    if digits:
-                        variant_url = f"{BASEURL}?skuId={digits[0]}"
-
-                else:
-                    aria = button.get_attribute("aria-label")
-                    page_html = page.content()
-
-                    sku_match = None
-                    if aria:
-                        sku_match = re.findall(rf'displayName":"(\d+) {aria}?","freeShippingMessage', page_html)
-                        if not sku_match:
-                            sku_match = re.findall(rf'displayName":"(\d+) {aria}?","freeShippingType', page_html)
-
-                    if sku_match:
-                        variant_url = f"{BASEURL}?skuId={sku_match[0]}"
-
-            url_collections.append(variant_url)
-    else:
-        url_collections.append(BASEURL)
-
+        None
     products = []
 
     # -------- EACH VARIANT --------
