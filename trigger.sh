@@ -1,15 +1,6 @@
 #!/bin/bash
 # ============================================================
 # trigger.sh — Re-run scraper using already assigned input
-#
-# Architecture:
-#   user-data.sh → downloads & assigns input per server
-#   trigger.sh   → re-runs scraper on SAME local input
-#
-# Safe:
-#   - No S3 input access
-#   - No reassignment
-#   - No input deletion
 # ============================================================
 
 set -e
@@ -31,39 +22,39 @@ echo "Server ID : $SERVER_ID"
 echo "Region    : $AWS_REGION"
 echo ""
 
-# ── Cleanup previous containers only (NOT input) ───────────
+# ── Cleanup previous containers ─────────────────────────────
 echo "Cleaning old containers..."
 docker rm -f $(docker ps -aq --filter "name=scraper_")  2>/dev/null || true
 docker rm -f $(docker ps -aq --filter "name=selenium_") 2>/dev/null || true
 
 rm -f output/*.xlsx logs/*.log
 
-# ── Refresh IAM creds (for S3 output + SNS only) ───────────
+# ── Refresh IAM creds (HOST only: SNS etc) ──────────────────
 echo "Refreshing IAM credentials..."
 ROLE_NAME=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)
 CREDS=$(curl -s "http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE_NAME")
 
 export AWS_ACCESS_KEY_ID=$(echo "$CREDS"     | python3 -c "import sys,json; print(json.load(sys.stdin)['AccessKeyId'])")
 export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['SecretAccessKey'])")
-export AWS_SESSION_TOKEN=$(echo "$CREDS"     | python3 -c "import sys,json; print(json.load(sys.stdin)['Token']")
+export AWS_SESSION_TOKEN=$(echo "$CREDS"     | python3 -c "import sys,json; print(json.load(sys.stdin)['Token'])")
 
 echo "Credentials refreshed."
 
-# ── Pull latest scraper code ───────────────────────────────
+# ── Pull latest code ────────────────────────────────────────
 echo "Pulling latest GitHub code..."
 cd ./repo
 git pull origin "$GITHUB_BRANCH" || echo "Git pull failed — using existing code"
 cd ..
 
-# ── Rebuild Docker image ───────────────────────────────────
+# ── Build Docker image ──────────────────────────────────────
 echo "Building Docker image..."
 docker build -t scraper-image ./repo
 
-# ── Use already assigned local input files ─────────────────
+# ── Use local assigned input ────────────────────────────────
 LOCAL_INPUT_DIR="/home/ubuntu/scraper/input"
 
 echo ""
-echo "Using already assigned input files from:"
+echo "Using already assigned input files:"
 echo "$LOCAL_INPUT_DIR"
 
 ls "$LOCAL_INPUT_DIR"/*.xlsx 2>/dev/null \
@@ -120,9 +111,10 @@ while IFS= read -r fname; do
         sleep 2
     done
 
-    # Run scraper
+    # Run scraper (IAM role via metadata)
     docker run --name "scraper_${SAFE}" \
         --link "selenium_${SAFE}:selenium-chrome" \
+        --network host \
         -v "/home/ubuntu/scraper/input/$fname:/app/input/$fname" \
         -v "/home/ubuntu/scraper/output:/app/output" \
         -v "/home/ubuntu/scraper/logs:/app/logs" \
@@ -132,9 +124,6 @@ while IFS= read -r fname; do
         -e "S3_OUTPUT_PREFIX=$S3_OUTPUT_PREFIX" \
         -e "AWS_REGION=$AWS_REGION" \
         -e "AWS_DEFAULT_REGION=$AWS_REGION" \
-        -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
-        -e "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \
-        -e "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN" \
         -e "SERVER_ID=$SERVER_ID" \
         -e "SELENIUM_HUB_URL=http://selenium-chrome:4444/wd/hub" \
         scraper-image
@@ -159,7 +148,7 @@ echo "=============================="
 echo "DONE — Success: $SUCCESS_COUNT | Failed: $FAIL_COUNT"
 echo "=============================="
 
-# ── SNS notify ─────────────────────────────────────────────
+# ── SNS notify (host IAM creds) ─────────────────────────────
 MY_FILES_LIST=$(cat /tmp/my_files.txt | tr '\n' ' ')
 
 if [ "$FAIL_COUNT" -eq 0 ]; then
