@@ -51,6 +51,7 @@ URL_LIST = input_df["Product URL"].tolist()
 # Selenium Setup
 # ==========================================================
 driver = Driver(
+    use_chromium=True,
     uc=True,
     incognito=True,
     headless=False,
