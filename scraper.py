@@ -49,7 +49,7 @@ context = browser.new_context(
     viewport={"width": 1920, "height": 1080}
 )
 page = context.new_page()
-stealth.stealth_sync(page)
+stealth(page)
 
 # ============================
 # Scrape function
