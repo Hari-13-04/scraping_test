@@ -1,19 +1,18 @@
-import time
+import argparse,os
+import requests
 import json
-import re,os
-import pandas as pd,requests,argparse
+import pandas as pd
+from itertools import chain
+from time  import sleep
 from bs4 import BeautifulSoup
-from seleniumbase import Driver
-from selenium_stealth import stealth
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from parsel import Selector
+
 
 headers = {
   'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-  'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8,ta;q=0.7',
+  'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
   'priority': 'u=0, i',
-  'sec-ch-ua': '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+  'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
   'sec-ch-ua-mobile': '?0',
   'sec-ch-ua-platform': '"Windows"',
   'sec-fetch-dest': 'document',
@@ -21,12 +20,9 @@ headers = {
   'sec-fetch-site': 'none',
   'sec-fetch-user': '?1',
   'upgrade-insecure-requests': '1',
-  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+  'Cookie': 'Store=70; CART_SESSION=33a34e770a354f778cc4c8a8d6a4a8bf93ff954c5ecd465daa910199b7bf599c; _gcl_au=1.1.39343214.1756988263; __kla_id=eyJjaWQiOiJNR0l5WWpSbU5XTXRPREExWkMwME56ZzBMV0kyTXpVdE5XRXdNV1V5WkRoaVpUQTAifQ==; _ga=GA1.1.1833679925.1756988264; _fbp=fb.1.1756988264420.350046913984731010; _bti=%7B%22app_id%22%3A%22mccoys-building-supply%22%2C%22bsin%22%3A%22B5oCP557w%2FAJSr71SYWPj1gX5SMxRJSgG7zyYnyE3Mo9RnURE7Sefc56OVYbblSEDUaAWbH%2BlAqOJHv%2Fb8vDZg%3D%3D%22%2C%22is_identified%22%3Afalse%7D; _ga_DJ2VK509SK=GS2.1.s1756988263$o1$g0$t1756988273$j50$l0$h0; OptanonAlertBoxClosed=2025-09-04T12:19:11.873Z; __cf_bm=XJDyqAFhLPQOJaC3bETky_wjvKgbBw3UWY6n0w_5S5Q-1757048408-1.0.1.1-oAIZ69zdnJNYxWNH5V9Ci4A812oHmTm2A6xSvJwWBjryT6ur9NxZZtMRwmqr8f1I.FMQwX0vRu8QnjBPMlsyvhrkiux2n9vZvOXr9rjozVc; OptanonConsent=isGpcEnabled=0&datestamp=Fri+Sep+05+2025+10%3A30%3A42+GMT%2B0530+(India+Standard+Time)&version=202407.2.0&browserGpcFlag=0&isIABGlobal=false&hosts=&consentId=0e88c970-9d6e-4902-849e-c9d0716a882a&interactionCount=2&isAnonUser=1&landingPath=NotLandingPage&groups=C0001%3A1%2CC0003%3A1%2CC0002%3A0%2CBG15%3A0%2CC0004%3A0&AwaitingReconsent=false&intType=3&geolocation=IN%3BTN'
 }
-
-# ==========================================================
-# Ask user for input Excel
-# ==========================================================
 parser = argparse.ArgumentParser(description="Sephora Product Scraper (Playwright)")
 parser.add_argument("--input", required=True, help="Input Excel file path")
 parser.add_argument("--output", required=False, help="Output Excel file path (optional)")
@@ -38,264 +34,224 @@ if args.output:
 else:
     base = os.path.splitext(os.path.basename(input_file))[0]
     output_name = base + "_output.xlsx"
-input_df = pd.read_excel(input_file)
-
-if "Product URL" not in input_df.columns:
-    raise Exception("❌ Excel must have a 'Product URL' column")
-
-URL_LIST = input_df["Product URL"].tolist()
 
 
-# ==========================================================
-# Selenium Setup
-# ==========================================================
-driver = Driver(undetected=True,uc=True, incognito=True, headless=False)
+def response(url: str):
+    return requests.get(url,headers=headers,timeout=5)
 
-stealth(
-    driver,
-    languages=["en-US", "en"],
-    vendor="Google Inc.",
-    platform="Win32",
-    webgl_vendor="Intel Inc.",
-    renderer="Intel Iris OpenGL Engine",
-    fix_hairline=True,
-)
-
-wait = WebDriverWait(driver, 10)
+def complain_filter(context):
+    if "Restricted for Sale" not in context:return context
 
 
-# ==========================================================
-# Scraper Function
-# ==========================================================
-def scrape_product(BASEURL):
-    print("Scraping =>", BASEURL)
-    driver.get(BASEURL)
-    time.sleep(3)
+def link_name_extraction(css_selector:str,soup:BeautifulSoup,data:dict,head_name:str):
+    links = soup.select(css_selector) if soup.select(css_selector) else []
+    if links != []:
+        for i, a in enumerate(links, start=1):
+            name = a.get_text(strip=True)
+            href = a.get("href")
+            src = a.get("src")
+            if name and href:
+                data[f"{head_name} Name {i}"] = name
+                data[f"{head_name} Link {i}"] = href if href.startswith("http") else "https://www.mccoys.com"+href
+            elif src:
+                sku = data.get("SKU")
+                mpn = data.get('Manufacturer Part number')
+                title = data.get('Product Title')
+                naming = sku or mpn or title
+                name = f'{naming}_{i}'
+                data[f"{head_name} Name {i}"] = name
+                data[f"{head_name} Link {i}"] = src
 
-    # -------- VARIANT URLs --------
+def stripper(striplist:str):
+    return striplist.strip()
+
+
+def extract_data(url, idx, selectors):
     try:
-        buttons = wait.until(EC.presence_of_all_elements_located(
-            (By.CSS_SELECTOR, '[data-comp="SwatchGroup "] button')))
-    except:
-        buttons = None
+        print(f"Processing the url: {url} and row number: {idx}")
+        response_ = response(url)
+        if response_.status_code != 200:
+            return {"Product URL": url, "Error": f"HTTP {response_.status_code}"}
 
-    url_collections = []
+        # Parsers
+        soup = BeautifulSoup(response_.text, "html.parser")
+        sel = Selector(text=response_.text)
 
-    if buttons:
-        for button in buttons:
-            html = button.get_attribute("outerHTML")
-            variant_url = BASEURL
-            if "selected" not in button.get_attribute("data-at"):
+        data = {}
 
-                soup_btn = BeautifulSoup(html, "html.parser")
-                img_tag = soup_btn.select_one("img")
+        # --- Generic field extractor ---
+        def get_value(key, selector, multiple=False):
+            """
+            Extract value using XPath or CSS depending on key name.
+            XPATH_KEYS -> use XPath
+            Others     -> use CSS
+            Always returns list if multiple=True, else string or None.
+            """
+            XPATH_KEYS = {"compliance"}
+            if not selector or key not in selector:
+                return None
 
-                if img_tag and img_tag.get("src"):
-                    sku_digits = re.findall(r"\d+", img_tag.get("src"))
-                    if sku_digits:
-                        variant_url = f"{BASEURL}?skuId={sku_digits[0]}"
+            sel_str = selector[key]
+            if key in XPATH_KEYS:  # use XPath
+                if multiple:
+                    try:
+                        return [x.strip() for x in sel.xpath(sel_str).getall() if x.strip()]
+                    except:
+                        return []
+                try:
+                    return sel.xpath(sel_str).get(default="").strip()
+                except:
+                    return None
+            else:  # use CSS
+                if multiple:
+                    try:
+                        return [x.strip() for x in sel.css(sel_str).getall() if x.strip()]
+                    except:
+                        return []
+                try:
+                    return sel.css(sel_str).get(default="").strip()
+                except:
+                    return None
+        # --- Fixed fields from JSON ---
+        data["Product Title"] = sel.css(selectors["Title"]).get(default="").strip()
+        data["Meta Title"] = sel.css(selectors["Meta_Title"]).get(default="").strip()
+        meta_desc_tag = soup.select_one(selectors.get("Meta_Description"))
+        data["Meta Description"] = meta_desc_tag.get("content") if meta_desc_tag else None
 
-                else:
-                    var_value = button.get_attribute("aria-label")
-                    page = driver.page_source
+        meta_kw_tag = soup.select_one(selectors.get("Meta_keyword"))
+        data["Meta Keyword"] = meta_kw_tag.get("content") if meta_kw_tag else None
 
-                    sku_match = None
-                    if var_value:
-                        sku_match = re.findall(rf'displayName":"(\d+) {var_value}?","freeShippingMessage',page)
-                        if sku_match == []:
-                            sku_match = re.findall(rf'displayName":"(\d+) {var_value}?","freeShippingType',page)
-                            if sku_match == []:
-                                color = soup_btn.select_one('span').get_text(strip=True)
-                                sku_match = re.findall(rf'","sku":"(\d+)","color":"{color}","image":"',page)
+        data["SKU"] = sel.xpath(selectors["SKU"]).get(default="").strip()
+        data["Brand"] = sel.css(selectors["Brand"]).get(default="").strip()
+        data["Variation Name"] = sel.css(selectors["variation_name"]).get(default="").strip()
+        if data["Variation Name"]:
+            data["Variation Name"] = data["Variation Name"].replace(":","")
+        variant_values = soup.select(selectors.get("variation_value"))
+        if variant_values:
+            for var_value in variant_values:
+                if not var_value.select_one("button"):
+                    data["Variation Value"]=var_value.text.replace(data["Variation Name"]+":","").strip()
+        description = get_value("Product_Description", selectors, multiple=True)
 
-                    if sku_match:
-                        sku_id = sku_match[0]
-                        variant_url = f"{BASEURL}?skuId={sku_id}"
+        data["Description"] = "\n".join(map(stripper,description)) if description !=[] else ""
 
-            url_collections.append(variant_url)
-    else:
-        url_collections.append(BASEURL)
+        price_texts = get_value("Price", selectors, multiple=True)
+        data["Product Price"] = " ".join(map(stripper,price_texts)) if price_texts != [] else None
+
+        categories = get_value("Category", selectors, multiple=True)
+        data["Taxonomy"] = " | ".join(map(stripper,categories)) if categories != [] else ""
+        data["End Category"] = categories[-1].strip() if categories !=[] else None
 
 
+        specvalue = soup.select(selectors['spec_value'])
+        spechead = soup.select(selectors['spec_header'])
+        if spechead != [] and specvalue != []:
+            if len(spechead) == len(specvalue):
+                attr_counter = 1
+                for head,value in zip(spechead,specvalue):
+                    data[f"Attribute Name {attr_counter}"] = head.get_text(strip=True)
+                    data[f"Attribute Value {attr_counter}"] = value.get_text(strip=True)
+                    attr_counter += 1
 
-    products = []
-
-    # -------- SCRAPE EACH VARIANT --------
-    for variant_url in url_collections:
-        print(variant_url)
-        driver.get(variant_url)
-        time.sleep(5)
-
-        html = driver.page_source
-        soup = BeautifulSoup(html, "html.parser")
-
-        meta_title = soup.select_one("title").get_text(strip=True) if soup.select_one("title") else ""
-        print(meta_title)
-        meta_desc = ""
+        # link_name_extraction(selectors.get("PDF"),soup=soup,data=data,head_name="PDF")
+        link_name_extraction(selectors.get("Image"),soup=soup,data=data,head_name="Image")
+        link_name_extraction(selectors.get("Category_links"),soup=soup,data=data,head_name="Category")
         try:
-            meta_desc = soup.select_one('meta[name="description"]').get("content", "")
+            feature_list = sel.css(selectors["feature"]).getall()
+            if feature_list:
+                for i, f in enumerate(feature_list, start=1):
+                    text = f.strip()
+                    if text:
+                        data[f"Feature {i}"] = text
         except:
-            response = requests.get(variant_url,headers)
-            meta_soup = BeautifulSoup(response.text,"html.parser").select_one('meta[name="description"]')
-            if meta_soup:
-                meta_desc = meta_soup.get("content", "")
+            pass
 
-        body_html = wait.until(EC.presence_of_element_located((By.XPATH, "//body"))).get_attribute("outerHTML")
-        soup = BeautifulSoup(body_html, "html.parser")
+        data['Product URL']=url
+        print("Product Data:",data)
+        return data
 
-        # BASIC DATA
-        title = soup.select_one('[data-at="product_name"]').get_text(strip=True) if soup.select_one('[data-at="product_name"]') else ""
-        sku = soup.select_one('[data-at="item_sku"]').get_text(strip=True).replace("Item ", "") if soup.select_one('[data-at="item_sku"]') else ""
-        brand = soup.select_one('[data-at="brand_name"]').get_text(strip=True) if soup.select_one('[data-at="brand_name"]') else ""
-        price = soup.select_one('b[class="css-0"]').get_text(strip=True) if soup.select_one('b[class="css-0"]') else ""
+    except Exception as e:
+        return {"Product URL": url, "Error": str(e)}
 
-        # -------- VARIANTS --------
-        var_dict = {}
-        variant_nodes = soup.select('[data-at="sku_name_label"] span, [data-at="sku_size_label"]')
-
-        if variant_nodes:
-            v = 1
-            for item in variant_nodes:
-                txt = item.get_text(strip=True)
-
-                if ":" in txt:
-                    name, val = txt.split(":", 1)
-                else:
-                    if txt.startswith("Size"):
-                        name, val = "Size", txt.replace("Size", "").strip()
-                    elif txt.startswith("Color"):
-                        name, val = "Color", txt.replace("Color", "").strip()
-                    else:
-                        continue
-
-                var_dict[f"Variant Name {v}"] = name.strip()
-                var_dict[f"Variant Value {v}"] = val.strip()
-                v += 1
-
-        # -------- CATEGORY --------
-        cat_dict = {}
-        cats = soup.select('[aria-label="Breadcrumb"] li a')
-
-        if cats:
-            for idx, c in enumerate(cats, 1):
-                txt = c.get_text(strip=True)
-                link = c.get("href")
-                link = link if link.startswith("http") else "https://www.sephora.com" + link
-
-                cat_dict[f"Category Name {idx}"] = txt
-                cat_dict[f"Category Link {idx}"] = link
-
-        # -------- IMAGES --------
-        img_dict = {}
-        imgs = soup.select('[data-at="product_images"] picture source')
-
-        if imgs:
-            for i, tag in enumerate(imgs, 1):
-                found = re.findall(r'https?://[^ ?]+', tag.get("srcset"))
-                if found:
-                    img_dict[f"Image Name {i}"] = f"{sku}_{i}"
-                    img_dict[f"Image Link {i}"] = found[0]
-
-        # -------- HIGHLIGHTS --------
-        block = re.search(r'"highlights":\s*\[([\s\S]*?)\],\s*"ingredientDesc"', html)
-        highlights = ""
-        if block:
-            highlights = "\n".join(re.findall(r'"name":"(.*?)"', block.group(1)))
-
-        # -------- DESCRIPTION --------
-        description = ""
-        desc_raw = re.findall(r'\,\"longDescription\"\:.*\,\"longDescription\"\:\"(.*)?\"\,\"lovesCount"', html, flags=re.DOTALL)
-
-        if desc_raw:
-            parts = re.split(r'(?:<br\s*/?>\s*){2,}', desc_raw[0])
-            for part in parts:
-                txt = BeautifulSoup(part, "html.parser").get_text("\n", strip=True)
-                lines = txt.split("\n")
-                cleaned = " ".join(lines) if len(lines) <= 2 else txt
-                description += cleaned + "\n"
-
-        ingredient = soup.select_one('#ingredients div div')
-        ingredient = ingredient.get_text("\n", strip=True) if ingredient else ""
-
-        how_to = soup.select_one('[data-at="how_to_use_section"]')
-        how_to_use = how_to.get_text("\n", strip=True) if how_to else ""
-
-        # -------- FINAL ITEM --------
-        products.append({
-            "Product URL": variant_url,
-            "SKU": sku,
-            "Product Title": title,
-            "Brand": brand,
-            "Price": price,
-            "Description": description.strip(),
-            "Ingredient": ingredient,
-            "How to Use": how_to_use,
-            "Highlights": highlights,
-            "Meta Title": meta_title,
-            "Meta Description": meta_desc,
-            **var_dict,
-            **cat_dict,
-            **img_dict
-        })
-
-    return products
+def uniq_keep_order(seq):
+    seen = set()
+    res = []
+    for x in seq:
+        k = str(x).strip().lower()
+        if k and k not in seen:
+            seen.add(k)
+            res.append(str(x).strip())
+    return res
 
 
-# ==========================================================
-# SCRAPE ALL URLs
-# ==========================================================
-all_items = []
-for uidx, url in enumerate(URL_LIST,1):
-    print(f"{uidx} out of {len(URL_LIST)}")
-    all_items.extend(scrape_product(url))
-
-
-# ==========================================================
-# CLEAN + BUILD ORDERED EXCEL
-# ==========================================================
-def build_excel(rows, output_name="sephora_output.xlsx"):
-    print("\n📌 Building dynamic ordered Excel...")
-
-    # ----- FIXED HEADERS -----
-    FIXED = [
-        "Product URL", "SKU", "Product Title", "Brand",
-        "Price", "Description", "Ingredient", "How to Use",
-        "Highlights", "Meta Title", "Meta Description"
+def df_excel(input_file:str,results:list) -> None:
+    out_df = pd.json_normalize(results)
+    fixed_headers = [
+        "Product URL",
+        "Product Title", "SKU","Variation Name","Variation Value", "Description", "Product Price","Brand",
+        "Taxonomy", "End Category",
+        "Meta Title", "Meta Description","Meta Keyword"
     ]
 
-    variant_headers = []
-    image_headers = []
-    category_headers = []
+    # Collect dynamic headers from the DataFrame
+    attribute_headers = [col for col in out_df.columns if col.startswith("Attribute")]
+    attachment_headers = [col for col in out_df.columns if col.startswith("PDF")]
+    image_headers = [col for col in out_df.columns if col.startswith("Image")]
+    category_headers = [col for col in out_df.columns if col.startswith("Category")]
+    video_headers = [col for col in out_df.columns if col.startswith("Video")]
+    feature_headers = [col for col in out_df.columns if col.startswith("Feature")]
 
-    # ----- Detect dynamic headers -----
-    for item in rows:
-        for key in item.keys():
-            if "Variant Name" in key or "Variant Value" in key:
-                if key not in variant_headers:
-                    variant_headers.append(key)
+    final_headers = fixed_headers + feature_headers+ attribute_headers  + image_headers + attachment_headers + video_headers+category_headers
+    out_df = out_df.reindex(columns=final_headers)
 
-            if "Image Name" in key or "Image Link" in key:
-                if key not in image_headers:
-                    image_headers.append(key)
+    category_name_headers = [col for col in out_df.columns if col.startswith("Category Name")]
+    attribute_name_headers = [col for col in out_df.columns if col.startswith("Attribute Name")]
 
-            if "Category Name" in key or "Category Link" in key:
-                if key not in category_headers:
-                    category_headers.append(key)
+    another_df = out_df.copy()
+    another_df[category_name_headers]  = another_df[category_name_headers].applymap(lambda v: v.strip() if isinstance(v, str) else v)
+    another_df[attribute_name_headers] = another_df[attribute_name_headers].applymap(lambda v: v.strip() if isinstance(v, str) else v)
 
-    # Sort naturally: 1,2,3...
-    variant_headers = sorted(variant_headers, key=lambda x: int(re.findall(r'\d+', x)[0]))
-    image_headers = sorted(image_headers, key=lambda x: int(re.findall(r'\d+', x)[0]))
-    category_headers = sorted(category_headers, key=lambda x: int(re.findall(r'\d+', x)[0]))
+    another_df["__attrs__"] = another_df[attribute_name_headers].apply(
+        lambda r: [x for x in r if pd.notna(x) and str(x).strip() != ""], axis=1
+    )
 
-    # ----- FINAL HEADER ORDER -----
-    FINAL_HEADERS = FIXED + variant_headers + image_headers + category_headers
+    grp = (
+        another_df.groupby(category_name_headers, dropna=False)["__attrs__"]
+            .agg(lambda lists: uniq_keep_order(chain.from_iterable(lists)))
+            .reset_index()
+    )
 
-    df = pd.DataFrame(rows)
-    df = df.reindex(columns=FINAL_HEADERS)
+    max_attrs = grp["__attrs__"].map(len).max() if not grp.empty else 0
+    for i in range(1, max_attrs + 1):
+        grp[f"Attribute {i}"] = grp["__attrs__"].map(lambda L: L[i-1] if len(L) >= i else pd.NA)
+    grp = grp.drop(columns="__attrs__")
+    final_cols = category_name_headers + [f"Attribute {i}" for i in range(1, max_attrs + 1)]
+    unique_df = grp[final_cols]
 
-    df.to_excel(output_name, index=False)
-    print("✅ Excel saved as:", output_name)
+    with pd.ExcelWriter(input_file,engine="openpyxl") as writer:
+        out_df.to_excel(writer,sheet_name="Product Data",index=False)
+        unique_df.to_excel(writer,sheet_name="Unique Attribute",index=False)
 
 
-# Build final Excel
-build_excel(all_items)
+
+def main():
+    # Load selectors JSON
+    with open("xpath_json.json", "r", encoding="utf-8") as f:
+        selectors = json.load(f)
+
+    # Read input Excel
+    df = pd.read_excel(input_file,dtype=str)
+
+    results = []
+    for idx, url in enumerate(df["Product URL"].dropna(), start=1):
+        results.append(extract_data(url, idx, selectors))
+    try:
+        df_excel(output_name,results)
+    except:
+        print("No Data and excel cannot write")
+
+    print("✅ Scraping complete. Data saved to output.xlsx")
+
+
+if __name__ == "__main__":
+    main()
