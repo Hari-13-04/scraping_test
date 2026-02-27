@@ -54,6 +54,8 @@ page = context.new_page()
 # ============================
 def scrape_product(BASEURL):
     print("Scraping =>", BASEURL)
+    url_collections = []
+
     try:
         page.goto(BASEURL, timeout=60000, wait_until="domcontentloaded")
         page.wait_for_timeout(3000)
@@ -67,7 +69,6 @@ def scrape_product(BASEURL):
         except:
             print("No swatch groups")
             buttons = []
-        url_collections = []
 
         if buttons:
             for button in buttons:
