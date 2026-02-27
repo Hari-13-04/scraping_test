@@ -51,7 +51,6 @@ URL_LIST = input_df["Product URL"].tolist()
 # Selenium Setup
 # ==========================================================
 driver = Driver(
-    use_chromium=True,
     uc=True,
     incognito=True,
     headless=False,
@@ -136,6 +135,7 @@ def scrape_product(BASEURL):
         soup = BeautifulSoup(html, "html.parser")
 
         meta_title = soup.select_one("title").get_text(strip=True) if soup.select_one("title") else ""
+        print(meta_title)
         meta_desc = ""
         try:
             meta_desc = soup.select_one('meta[name="description"]').get("content", "")
