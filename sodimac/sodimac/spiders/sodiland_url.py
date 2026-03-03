@@ -20,9 +20,10 @@ def file_name_checker(name):
 class SodiSpider(scrapy.Spider):
     name = "sodiland_url"
 
-    def __init__(self, input_file=None, *args, **kwargs):
+    def __init__(self, input_file=None, output_file = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.input_file = input_file
+        self.output_file = output_file
         self.items = []
 
     def start_requests(self):
@@ -83,3 +84,26 @@ class SodiSpider(scrapy.Spider):
 
         except Exception as e:
             print("Error:", e)
+
+    def close(self, reason):
+        if not self.items:
+            self.logger.warning("No items scraped.")
+            return
+
+        df = pd.DataFrame(self.items)
+
+        # Priority 1: CLI argument
+        if self.output_file:
+            output_path = self.output_file
+
+        # Priority 2: Environment variable (Docker)
+        else:
+            output_dir = os.environ.get("OUTPUT_DIR", ".")
+            os.makedirs(output_dir, exist_ok=True)
+
+            base_name = os.path.splitext(os.path.basename(self.input_file))[0]
+            output_path = os.path.join(output_dir, f"{base_name}_output.xlsx")
+
+        df.to_excel(output_path, index=False)
+
+        self.logger.info(f"Excel saved to: {output_path}")
