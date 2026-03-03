@@ -7,6 +7,10 @@ RUN apt-get update && apt-get install -y \
     xvfb \
     curl \
     unzip \
+    gcc \
+    build-essential \
+    libffi-dev \
+    libssl-dev \
     wget \
     fonts-liberation \
     libglib2.0-0 \
@@ -43,7 +47,8 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir \
         playwright-stealth \
         selenium-stealth \
-        undetected-chromedriver
+        undetected-chromedriver \
+        scrapy
 
 # ---- Ensure Playwright browsers ----
 RUN playwright install --with-deps chromium
@@ -58,8 +63,7 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awsc
     && rm -rf /tmp/awscliv2.zip /tmp/aws
 
 # ---- App ----
-COPY scraper.py .
-COPY entrypoint.sh /entrypoint.sh
+COPY . .
 RUN chmod +x /entrypoint.sh
 
 ENV PYTHONUNBUFFERED=1

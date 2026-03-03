@@ -94,6 +94,7 @@ while IFS= read -r fname; do
         -v "/home/ubuntu/scraper/logs:/app/logs" \
         -e "INPUT_FILE=/app/input/$fname" \
         -e "OUTPUT_DIR=/app/output" \
+        -e "RUN_MODE=scrapy" \        # 👈 ADD HERE (optional)
         -e "S3_BUCKET=$S3_BUCKET" \
         -e "S3_OUTPUT_PREFIX=$S3_OUTPUT_PREFIX" \
         -e "AWS_REGION=$AWS_REGION" \
