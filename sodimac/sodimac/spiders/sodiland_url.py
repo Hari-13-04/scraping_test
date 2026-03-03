@@ -5,7 +5,6 @@ from datetime import datetime
 import os
 import time
 import pandas as pd
-import boto3
 from io import StringIO
 
 warnings.filterwarnings('ignore')
