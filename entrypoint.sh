@@ -56,7 +56,7 @@ if [ -n "$SCRAPY_PROJECT_DIR" ]; then
 
             if [ -f "$OUTPUT_FILE" ]; then
                 aws s3 cp "$OUTPUT_FILE" \
-                    "s3://${S3_BUCKET}/${S3_OUTPUT_PREFIX}${SPIDER}_${BASE}.xlsx" \
+                    "s3://${S3_BUCKET}/${BASE}_output.xlsx" \
                     --region "$AWS_REGION" 2>&1 | tee -a "$LOG_FILE"
             fi
         else
