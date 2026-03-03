@@ -38,12 +38,12 @@ if [ -n "$SCRAPY_PROJECT_DIR" ]; then
 
     for SPIDER in $SPIDERS; do
 
-        OUTPUT_FILE="${OUTPUT_DIR}/${SPIDER}_${BASE}.xlsx"
+        OUTPUT_FILE="${OUTPUT_DIR}/${BASE}_output.xlsx"
 
         echo "--------------------------------------" | tee -a "$LOG_FILE"
         echo "Running spider: $SPIDER" | tee -a "$LOG_FILE"
 
-        RUN_CMD="scrapy crawl $SPIDER -a input_file=\"$INPUT_FILE\" -o \"$OUTPUT_FILE\" "
+        RUN_CMD="scrapy crawl $SPIDER -a input_file=\"$INPUT_FILE\" -a output_file=\"$OUTPUT_FILE\" "
 
         if command -v xvfb-run >/dev/null 2>&1; then
             RUN_CMD="xvfb-run -a $RUN_CMD"
