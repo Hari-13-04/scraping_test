@@ -53,7 +53,7 @@ if [ -n "$SCRAPY_PROJECT_DIR" ]; then
 
         if eval $RUN_CMD 2>&1 | tee -a "$LOG_FILE"; then
             echo "Spider SUCCESS: $SPIDER" | tee -a "$LOG_FILE"
-
+            EXIT_CODE=0
         else
             echo "Spider FAILED: $SPIDER" | tee -a "$LOG_FILE"
             EXIT_CODE=1
