@@ -64,9 +64,9 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awsc
 
 # ---- App ----
 COPY . .
-RUN chmod +x /entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 ENV PYTHONUNBUFFERED=1
 ENV DISPLAY=:99
 
-CMD ["/entrypoint.sh"]
+CMD ["./entrypoint.sh"]
