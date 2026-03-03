@@ -86,6 +86,10 @@ else
     fi
 fi
 
+aws s3 cp "$OUTPUT_FILE" \
+    "s3://${S3_BUCKET}/${S3_OUTPUT_PREFIX}${BASE}_output.xlsx" \
+    --region "$AWS_REGION" 2>&1 | tee -a "$LOG_FILE"
+
 # -------------------------------------------------
 # Upload log (always)
 # -------------------------------------------------
