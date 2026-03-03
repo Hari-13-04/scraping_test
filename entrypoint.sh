@@ -54,11 +54,6 @@ if [ -n "$SCRAPY_PROJECT_DIR" ]; then
         if eval $RUN_CMD 2>&1 | tee -a "$LOG_FILE"; then
             echo "Spider SUCCESS: $SPIDER" | tee -a "$LOG_FILE"
 
-            if [ -f "$OUTPUT_FILE" ]; then
-                aws s3 cp "$OUTPUT_FILE" \
-                    "s3://${S3_BUCKET}/${BASE}_output.xlsx" \
-                    --region "$AWS_REGION" 2>&1 | tee -a "$LOG_FILE"
-            fi
         else
             echo "Spider FAILED: $SPIDER" | tee -a "$LOG_FILE"
             EXIT_CODE=1
