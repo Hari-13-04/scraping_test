@@ -15,11 +15,16 @@ echo "======================================" | tee -a "$LOG_FILE"
 EXIT_CODE=0
 
 # -------------------------------------------------
-# MODE 1 → Scrapy project detected
+# MODE 1 → Scrapy project inside subfolder
 # -------------------------------------------------
-if [ -f "/app/scrapy.cfg" ]; then
 
-    echo "Scrapy project detected → MULTI-SPIDER mode" | tee -a "$LOG_FILE"
+SCRAPY_PROJECT_DIR=$(find /app -maxdepth 2 -name "scrapy.cfg" -exec dirname {} \; | head -n 1)
+
+if [ -n "$SCRAPY_PROJECT_DIR" ]; then
+
+    echo "Scrapy project found in: $SCRAPY_PROJECT_DIR" | tee -a "$LOG_FILE"
+
+    cd "$SCRAPY_PROJECT_DIR" || exit 1
 
     SPIDERS=$(scrapy list || true)
 
@@ -40,7 +45,6 @@ if [ -f "/app/scrapy.cfg" ]; then
 
         RUN_CMD="scrapy crawl $SPIDER -a input_file=\"$INPUT_FILE\" -o \"$OUTPUT_FILE\" -t xlsx"
 
-        # If xvfb exists → wrap it
         if command -v xvfb-run >/dev/null 2>&1; then
             RUN_CMD="xvfb-run -a $RUN_CMD"
         fi
@@ -50,7 +54,6 @@ if [ -f "/app/scrapy.cfg" ]; then
         if eval $RUN_CMD 2>&1 | tee -a "$LOG_FILE"; then
             echo "Spider SUCCESS: $SPIDER" | tee -a "$LOG_FILE"
 
-            # Upload spider output
             if [ -f "$OUTPUT_FILE" ]; then
                 aws s3 cp "$OUTPUT_FILE" \
                     "s3://${S3_BUCKET}/${S3_OUTPUT_PREFIX}${SPIDER}_${BASE}.xlsx" \
@@ -63,12 +66,10 @@ if [ -f "/app/scrapy.cfg" ]; then
 
     done
 
-# -------------------------------------------------
-# MODE 2 → Normal Python scraper
-# -------------------------------------------------
-else
+    cd /app
 
-    echo "No scrapy.cfg → Running Python scraper.py" | tee -a "$LOG_FILE"
+else
+    echo "No scrapy.cfg found → running scraper.py" | tee -a "$LOG_FILE"
 
     OUTPUT_FILE="${OUTPUT_DIR}/${BASE}_output.xlsx"
     RUN_CMD="python3 /app/scraper.py --input \"$INPUT_FILE\" --output \"$OUTPUT_FILE\""
@@ -77,21 +78,12 @@ else
         RUN_CMD="xvfb-run -a $RUN_CMD"
     fi
 
-    echo "Running: $RUN_CMD" | tee -a "$LOG_FILE"
-
     if eval $RUN_CMD 2>&1 | tee -a "$LOG_FILE"; then
         echo "SUCCESS: $FNAME" | tee -a "$LOG_FILE"
-
-        if [ -f "$OUTPUT_FILE" ]; then
-            aws s3 cp "$OUTPUT_FILE" \
-                "s3://${S3_BUCKET}/${S3_OUTPUT_PREFIX}${BASE}_output.xlsx" \
-                --region "$AWS_REGION" 2>&1 | tee -a "$LOG_FILE"
-        fi
     else
         echo "FAILED: $FNAME" | tee -a "$LOG_FILE"
         EXIT_CODE=1
     fi
-
 fi
 
 # -------------------------------------------------
