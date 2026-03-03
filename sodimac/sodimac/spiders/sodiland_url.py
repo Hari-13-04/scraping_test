@@ -10,9 +10,6 @@ from io import StringIO
 
 warnings.filterwarnings('ignore')
 
-# Use IAM role (NO hardcoded keys)
-s3_client = boto3.client("s3")
-bucket = os.getenv("S3_BUCKET", "aceinternationalcrawl")
 
 
 def file_name_checker(name):
@@ -60,8 +57,6 @@ class SodiSpider(scrapy.Spider):
 
             upload_name = sku if sku else title
             target_file = f"data/Sodimac/{file_name_checker(upload_name)}.html"
-
-            s3_bucket_store(target_file, response.text)
 
             item["Image"] = "".join(
                 re.findall(r'"image"\:\s*"([^"]+)"', response.text)
