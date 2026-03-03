@@ -75,6 +75,7 @@ else
 
     if eval $RUN_CMD 2>&1 | tee -a "$LOG_FILE"; then
         echo "SUCCESS: $FNAME" | tee -a "$LOG_FILE"
+        EXIT_CODE=0
     else
         echo "FAILED: $FNAME" | tee -a "$LOG_FILE"
         EXIT_CODE=1
