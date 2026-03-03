@@ -43,7 +43,7 @@ if [ -n "$SCRAPY_PROJECT_DIR" ]; then
         echo "--------------------------------------" | tee -a "$LOG_FILE"
         echo "Running spider: $SPIDER" | tee -a "$LOG_FILE"
 
-        RUN_CMD="scrapy crawl $SPIDER -a input_file=\"$INPUT_FILE\" -o \"$OUTPUT_FILE\" -t xlsx"
+        RUN_CMD="scrapy crawl $SPIDER -a input_file=\"$INPUT_FILE\" -o \"$OUTPUT_FILE\" "
 
         if command -v xvfb-run >/dev/null 2>&1; then
             RUN_CMD="xvfb-run -a $RUN_CMD"
