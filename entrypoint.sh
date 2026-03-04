@@ -19,8 +19,8 @@ EXIT_CODE=0
 # -------------------------------------------------
 
 
-if [ "$RUN_MODE" = "scrapy" ]; then
-    SCRAPY_PROJECT_DIR=$(find /app -maxdepth 2 -name "scrapy.cfg" -exec dirname {} \; | head -n 1)
+SCRAPY_PROJECT_DIR=$(find /app -maxdepth 2 -name "scrapy.cfg" -exec dirname {} \; | head -n 1)
+if [ -n "$SCRAPY_PROJECT_DIR" ]; then
 
     echo "Scrapy project found in: $SCRAPY_PROJECT_DIR" | tee -a "$LOG_FILE"
 
