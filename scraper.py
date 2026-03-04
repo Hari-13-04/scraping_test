@@ -185,52 +185,8 @@ def uniq_keep_order(seq):
 
 
 def df_excel(input_file:str,results:list) -> None:
-    out_df = pd.json_normalize(results)
-    fixed_headers = [
-        "Product URL",
-        "Product Title", "SKU","Variation Name","Variation Value", "Description", "Product Price","Brand",
-        "Taxonomy", "End Category",
-        "Meta Title", "Meta Description","Meta Keyword"
-    ]
-
-    # Collect dynamic headers from the DataFrame
-    attribute_headers = [col for col in out_df.columns if col.startswith("Attribute")]
-    attachment_headers = [col for col in out_df.columns if col.startswith("PDF")]
-    image_headers = [col for col in out_df.columns if col.startswith("Image")]
-    category_headers = [col for col in out_df.columns if col.startswith("Category")]
-    video_headers = [col for col in out_df.columns if col.startswith("Video")]
-    feature_headers = [col for col in out_df.columns if col.startswith("Feature")]
-
-    final_headers = fixed_headers + feature_headers+ attribute_headers  + image_headers + attachment_headers + video_headers+category_headers
-    out_df = out_df.reindex(columns=final_headers)
-
-    category_name_headers = [col for col in out_df.columns if col.startswith("Category Name")]
-    attribute_name_headers = [col for col in out_df.columns if col.startswith("Attribute Name")]
-
-    another_df = out_df.copy()
-    another_df[category_name_headers]  = another_df[category_name_headers].applymap(lambda v: v.strip() if isinstance(v, str) else v)
-    another_df[attribute_name_headers] = another_df[attribute_name_headers].applymap(lambda v: v.strip() if isinstance(v, str) else v)
-
-    another_df["__attrs__"] = another_df[attribute_name_headers].apply(
-        lambda r: [x for x in r if pd.notna(x) and str(x).strip() != ""], axis=1
-    )
-
-    grp = (
-        another_df.groupby(category_name_headers, dropna=False)["__attrs__"]
-            .agg(lambda lists: uniq_keep_order(chain.from_iterable(lists)))
-            .reset_index()
-    )
-
-    max_attrs = grp["__attrs__"].map(len).max() if not grp.empty else 0
-    for i in range(1, max_attrs + 1):
-        grp[f"Attribute {i}"] = grp["__attrs__"].map(lambda L: L[i-1] if len(L) >= i else pd.NA)
-    grp = grp.drop(columns="__attrs__")
-    final_cols = category_name_headers + [f"Attribute {i}" for i in range(1, max_attrs + 1)]
-    unique_df = grp[final_cols]
-
-    with pd.ExcelWriter(input_file,engine="openpyxl") as writer:
-        out_df.to_excel(writer,sheet_name="Product Data",index=False)
-        unique_df.to_excel(writer,sheet_name="Unique Attribute",index=False)
+    out_df = pd.DataFrame(results)
+    out_df.to_excel(input_file,index=False)
 
 
 
