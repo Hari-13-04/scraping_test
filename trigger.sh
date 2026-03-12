@@ -14,14 +14,6 @@ if [ ! -f .env ]; then
 fi
 source .env
 
-# Load token from system env (set during EC2 boot)
-source /etc/scraper.env 2>/dev/null || true
-
-# Agent token
-AGENT_TOKEN="${AGENT_TOKEN}"
-
-
-
 echo "Server ID : $SERVER_ID"
 echo "Region    : $AWS_REGION"
 
