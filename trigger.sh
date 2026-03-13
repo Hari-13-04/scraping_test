@@ -5,7 +5,9 @@ set -e
 # instance-agent.js tails the latest run_*.log for Live Log streaming
 SCRAPER_DIR="/home/ubuntu/scraper"
 mkdir -p "$SCRAPER_DIR/logs"
-LOG_FILE="$SCRAPER_DIR/logs/run_$(date +%Y%m%d_%H%M%S).log"
+# LOG_FILE="$SCRAPER_DIR/logs/run_$(date +%Y%m%d_%H%M%S).log"
+LOG_FILE="$SCRAPER_DIR/logs/main.log"
+
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "=========================================="
@@ -139,7 +141,8 @@ while IFS= read -r fname; do
             docker logs "scraper_${SAFE}" 2>&1 | tail -50
             echo ""
         } >> "$SCRAPER_DIR/error.log"
-        docker logs "scraper_${SAFE}" >> "$SCRAPER_DIR/logs/${SAFE}_docker.log" 2>&1 || true
+        # docker logs "scraper_${SAFE}" >> "$SCRAPER_DIR/logs/${SAFE}_docker.log" 2>&1 || true
+        docker logs "scraper_${SAFE}" >> "$SCRAPER_DIR/logs/main.log" 2>&1 || true
     fi
 
     docker rm -f "scraper_${SAFE}" "selenium_${SAFE}" >/dev/null 2>&1 || true
@@ -159,8 +162,11 @@ else
 fi
 
 # ── Upload run log to S3 ──────────────────────────────────────────────────────
-aws s3 cp "$LOG_FILE" \
-    "s3://$S3_BUCKET/${S3_OUTPUT_PREFIX}logs/server-${SERVER_ID}/trigger_$(date +%Y%m%d_%H%M%S).log" \
+# aws s3 cp "$LOG_FILE" \
+#     "s3://$S3_BUCKET/${S3_OUTPUT_PREFIX}logs/server-${SERVER_ID}/trigger_$(date +%Y%m%d_%H%M%S).log" \
+#     --region "$AWS_REGION" || true
+aws s3 cp "$SCRAPER_DIR/logs/main.log" \
+    "s3://$S3_BUCKET/${S3_OUTPUT_PREFIX}logs/server-${SERVER_ID}/trigger.log" \
     --region "$AWS_REGION" || true
 
 # ── SNS notification ──────────────────────────────────────────────────────────
