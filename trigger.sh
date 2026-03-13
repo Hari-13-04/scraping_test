@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+sudo chown -R ubuntu:ubuntu /home/ubuntu/scraper
 
 # ── Redirect all output to a timestamped log file ────────────────────────────
 # instance-agent.js tails the latest run_*.log for Live Log streaming
