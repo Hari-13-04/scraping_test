@@ -9,10 +9,12 @@ LOG_FILE="$SCRAPER_DIR/logs/main.log"
 mkdir -p "$SCRAPER_DIR/logs"
 
 # ── Redirect to main.log + a timestamped run log ─────────────────────────────
-# instance-agent latestLogFile() falls back to newest run_*.log for Live Log streaming.
-# Do NOT write to /var/log/cloud-init-output.log — that file is root-owned and
-# trigger.sh runs as ubuntu via instance-agent, causing permission denied error.
-RUN_LOG="$SCRAPER_DIR/logs/run_$(date +%Y%m%d_%H%M%S).log"
+# instance-agent pre-creates the run log and passes its path via $RUN_LOG env var
+# so the Live Log WebSocket can start tailing it immediately with no race condition.
+# If $RUN_LOG is not set (e.g. manual SSH run), create our own.
+if [ -z "$RUN_LOG" ]; then
+    RUN_LOG="$SCRAPER_DIR/logs/run_$(date +%Y%m%d_%H%M%S).log"
+fi
 exec > >(tee -a "$LOG_FILE" | tee -a "$RUN_LOG") 2>&1
 
 echo "=========================================="
