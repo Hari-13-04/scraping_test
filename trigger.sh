@@ -8,11 +8,10 @@ LOG_FILE="$SCRAPER_DIR/logs/main.log"
 
 mkdir -p "$SCRAPER_DIR/logs"
 
-# ── Redirect to main.log + a timestamped run log ──────────────────────────────
-# instance-agent latestLogFile() prefers cloud-init-output.log (boot only),
-# then falls back to the newest run_*.log — so we write there for Live Log streaming.
-# We do NOT write to /var/log/cloud-init-output.log because trigger.sh runs as
-# ubuntu (via instance-agent) and that file is root-owned — causes permission error.
+# ── Redirect to main.log + a timestamped run log ─────────────────────────────
+# instance-agent latestLogFile() falls back to newest run_*.log for Live Log streaming.
+# Do NOT write to /var/log/cloud-init-output.log — that file is root-owned and
+# trigger.sh runs as ubuntu via instance-agent, causing permission denied error.
 RUN_LOG="$SCRAPER_DIR/logs/run_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "$LOG_FILE" | tee -a "$RUN_LOG") 2>&1
 
@@ -129,20 +128,29 @@ while IFS= read -r fname; do
     SAFE=$(echo "$fname" | tr '. -' '_' | tr '[:upper:]' '[:lower:]')
 
     echo "[INFO] Starting Selenium"
+    # Force-remove any leftover containers with this name before starting fresh
+    # (handles the case where a previous run crashed and set -e prevented cleanup)
+    docker rm -f "selenium_${SAFE}" "scraper_${SAFE}" >/dev/null 2>&1 || true
+
     docker run -d \
         --name "selenium_${SAFE}" \
         --network scraper-net \
         --shm-size="2g" \
-        -p 4444:4444 \
-        -p 7900:7900 \
         selenium/standalone-chrome:latest
 
     echo "[INFO] Waiting for Selenium..."
+    SELENIUM_READY=0
     for i in $(seq 1 30); do
-        docker exec "selenium_${SAFE}" curl -sf http://localhost:4444/wd/hub/status >/dev/null 2>&1 \
-            && echo "[INFO] Selenium ready (attempt $i)" && break
+        if docker exec "selenium_${SAFE}" curl -sf http://localhost:4444/wd/hub/status >/dev/null 2>&1; then
+            echo "[INFO] Selenium ready (attempt $i)"
+            SELENIUM_READY=1
+            break
+        fi
         sleep 2
     done
+    if [ "$SELENIUM_READY" -eq 0 ]; then
+        echo "[WARN] Selenium did not become ready after 60s — proceeding anyway"
+    fi
 
     echo "[INFO] Starting scraper container"
     docker run \
