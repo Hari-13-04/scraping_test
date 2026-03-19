@@ -8,9 +8,13 @@ LOG_FILE="$SCRAPER_DIR/logs/main.log"
 
 mkdir -p "$SCRAPER_DIR/logs"
 
-# ── Redirect to BOTH cloud-init log AND main.log ──────────────────────────────
-# cloud-init-output.log is what instance-agent streams to the UI Live Log tab
-exec > >(tee -a "$LOG_FILE" >> /var/log/cloud-init-output.log) 2>&1
+# ── Redirect to main.log + a timestamped run log ──────────────────────────────
+# instance-agent latestLogFile() prefers cloud-init-output.log (boot only),
+# then falls back to the newest run_*.log — so we write there for Live Log streaming.
+# We do NOT write to /var/log/cloud-init-output.log because trigger.sh runs as
+# ubuntu (via instance-agent) and that file is root-owned — causes permission error.
+RUN_LOG="$SCRAPER_DIR/logs/run_$(date +%Y%m%d_%H%M%S).log"
+exec > >(tee -a "$LOG_FILE" | tee -a "$RUN_LOG") 2>&1
 
 echo "=========================================="
 echo "TRIGGER.SH — $(date)"
