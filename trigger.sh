@@ -21,6 +21,13 @@ echo "=========================================="
 echo "TRIGGER.SH — $(date)"
 echo "=========================================="
 
+# ── Docker access ─────────────────────────────────────────────────────────────
+# instance-agent runs as ubuntu. If ubuntu is in the docker group but the
+# group membership wasn't active when the agent started (e.g. usermod ran after
+# agent boot), docker commands will get "permission denied on docker.sock".
+# Fix: use "sudo docker" so we never rely on group membership in this session.
+DOCKER="sudo docker"
+
 cd "$SCRAPER_DIR"
 
 # ── Load config ───────────────────────────────────────────────────────────────
@@ -39,9 +46,9 @@ echo "STATUS=running" > "$SCRAPER_DIR/status.txt"
 
 # ── Cleanup old containers ────────────────────────────────────────────────────
 echo "[INFO] Cleaning old containers..."
-docker ps -aq --filter "name=scraper_"  | xargs -r docker rm -f
-docker ps -aq --filter "name=selenium_" | xargs -r docker rm -f
-docker network rm scraper-net 2>/dev/null || true
+$DOCKER ps -aq --filter "name=scraper_"  | xargs -r $DOCKER rm -f
+$DOCKER ps -aq --filter "name=selenium_" | xargs -r $DOCKER rm -f
+$DOCKER network rm scraper-net 2>/dev/null || true
 rm -f "$SCRAPER_DIR/output/"*.xlsx 2>/dev/null || true
 
 # ── Refresh IAM credentials ───────────────────────────────────────────────────
@@ -97,11 +104,11 @@ fi
 
 # ── Build scraper image ───────────────────────────────────────────────────────
 echo "[INFO] Building Docker image..."
-docker build -t scraper-image "$SCRAPER_DIR/repo"
+$DOCKER build -t scraper-image "$SCRAPER_DIR/repo"
 echo "[INFO] Docker image ready"
 
 # ── Create docker network ─────────────────────────────────────────────────────
-docker network create scraper-net 2>/dev/null || true
+$DOCKER network create scraper-net 2>/dev/null || true
 
 # ── List input files ──────────────────────────────────────────────────────────
 LOCAL_INPUT_DIR="$SCRAPER_DIR/input"
@@ -132,9 +139,9 @@ while IFS= read -r fname; do
     echo "[INFO] Starting Selenium"
     # Force-remove any leftover containers with this name before starting fresh
     # (handles the case where a previous run crashed and set -e prevented cleanup)
-    docker rm -f "selenium_${SAFE}" "scraper_${SAFE}" >/dev/null 2>&1 || true
+    $DOCKER rm -f "selenium_${SAFE}" "scraper_${SAFE}" >/dev/null 2>&1 || true
 
-    docker run -d \
+    $DOCKER run -d \
         --name "selenium_${SAFE}" \
         --network scraper-net \
         --shm-size="2g" \
@@ -143,7 +150,7 @@ while IFS= read -r fname; do
     echo "[INFO] Waiting for Selenium..."
     SELENIUM_READY=0
     for i in $(seq 1 30); do
-        if docker exec "selenium_${SAFE}" curl -sf http://localhost:4444/wd/hub/status >/dev/null 2>&1; then
+        if $DOCKER exec "selenium_${SAFE}" curl -sf http://localhost:4444/wd/hub/status >/dev/null 2>&1; then
             echo "[INFO] Selenium ready (attempt $i)"
             SELENIUM_READY=1
             break
@@ -155,7 +162,7 @@ while IFS= read -r fname; do
     fi
 
     echo "[INFO] Starting scraper container"
-    docker run \
+    $DOCKER run \
         --name "scraper_${SAFE}" \
         --network scraper-net \
         -v "$LOCAL_INPUT_DIR/$fname:/app/input/$fname" \
@@ -174,7 +181,7 @@ while IFS= read -r fname; do
         -e SELENIUM_HUB_URL="http://selenium_${SAFE}:4444/wd/hub" \
         scraper-image
 
-    EXIT_CODE=$(docker inspect "scraper_${SAFE}" --format='{{.State.ExitCode}}')
+    EXIT_CODE=$($DOCKER inspect "scraper_${SAFE}" --format='{{.State.ExitCode}}')
 
     if [ "$EXIT_CODE" = "0" ]; then
         echo "[OK] SUCCESS: $fname"
@@ -184,12 +191,12 @@ while IFS= read -r fname; do
         FAIL_COUNT=$((FAIL_COUNT + 1))
         {
             echo "=== $(date) FAILED: $fname ==="
-            docker logs "scraper_${SAFE}" | tail -50
+            $DOCKER logs "scraper_${SAFE}" | tail -50
             echo ""
         } >> "$SCRAPER_DIR/error.log"
     fi
 
-    docker rm -f "scraper_${SAFE}" "selenium_${SAFE}" >/dev/null 2>&1 || true
+    $DOCKER rm -f "scraper_${SAFE}" "selenium_${SAFE}" >/dev/null 2>&1 || true
 
 done < /tmp/my_files.txt
 
