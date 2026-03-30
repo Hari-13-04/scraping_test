@@ -222,6 +222,10 @@ MY_FILES_LIST=$(tr '\n' ' ' < /tmp/my_files.txt)
 if [ "$FAIL_COUNT" -eq 0 ]; then
     SUBJECT="[$PROJECT_NAME] Server $SERVER_ID SUCCESS"
     MESSAGE="All files processed successfully: $MY_FILES_LIST"
+    aws ec2 stop-instances \
+        --instance-ids "$INSTANCE_ID" \
+        --region "$AWS_REGION"
+
 else
     SUBJECT="[$PROJECT_NAME] Server $SERVER_ID PARTIAL FAILURE"
     MESSAGE="Success=$SUCCESS_COUNT Failed=$FAIL_COUNT | Files: $MY_FILES_LIST"
