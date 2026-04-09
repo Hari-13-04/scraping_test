@@ -84,13 +84,13 @@ fi
 if [ -f "$OUTPUT_FILE" ]; then
     aws s3 cp "$OUTPUT_FILE" \
         "s3://${S3_BUCKET}/${S3_OUTPUT_PREFIX}${BASE}_output.xlsx" \
-        --region "$AWS_REGION" 2>&1 | tee -a "$LOG_FILE"
+        --region "us-east-1" 2>&1 | tee -a "$LOG_FILE"
 else
     echo "Output not found → skipping S3 upload" | tee -a "$LOG_FILE"
 fi
 
 aws s3 cp "$LOG_FILE" \
     "s3://${S3_BUCKET}/${S3_OUTPUT_PREFIX}logs/server-${SERVER_ID}/${BASE}.log" \
-    --region "$AWS_REGION" || true
+    --region "us-east-1" || true
 
 exit $EXIT_CODE

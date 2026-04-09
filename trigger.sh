@@ -215,7 +215,7 @@ fi
 # ── Upload log to S3 ──────────────────────────────────────────────────────────
 aws s3 cp "$SCRAPER_DIR/logs/main.log" \
     "s3://$S3_BUCKET/${S3_OUTPUT_PREFIX}logs/server-${SERVER_ID}/trigger.log" \
-    --region "$AWS_REGION" || true
+    --region "us-east-1" || true
 
 # ── SNS notification ──────────────────────────────────────────────────────────
 MY_FILES_LIST=$(tr '\n' ' ' < /tmp/my_files.txt)
