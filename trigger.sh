@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
-
-sudo chown -R ubuntu:ubuntu /home/ubuntu/scraper
-
 SCRAPER_DIR="/home/ubuntu/scraper"
+
+sudo chown -R ubuntu:ubuntu "$SCRAPER_DIR"
+
 LOG_FILE="$SCRAPER_DIR/logs/main.log"
 
 mkdir -p "$SCRAPER_DIR/logs"
@@ -165,7 +165,7 @@ while IFS= read -r fname; do
     $DOCKER run \
         --name "scraper_${SAFE}" \
         --network scraper-net \
-        -v "$LOCAL_INPUT_DIR/$fname:/app/input/$fname" \
+        -v "$SCRAPER_DIR/input/$fname:/app/input/$fname" \
         -v "$SCRAPER_DIR/output:/app/output" \
         -v "$SCRAPER_DIR/logs:/app/logs" \
         -e INPUT_FILE="/app/input/$fname" \
