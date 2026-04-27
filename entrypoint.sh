@@ -38,7 +38,7 @@ if [ -n "$SCRAPY_PROJECT_DIR" ]; then
 
     for SPIDER in $SPIDERS; do
 
-        OUTPUT_FILE="${OUTPUT_DIR}/${BASE}_output.xlsx"
+        OUTPUT_FILE="${OUTPUT_DIR}/${BASE}_$(date +%Y%m%d_%H%M%S)_output.xlsx"
 
         echo "--------------------------------------" | tee -a "$LOG_FILE"
         echo "Running spider: $SPIDER" | tee -a "$LOG_FILE"
@@ -65,7 +65,7 @@ if [ -n "$SCRAPY_PROJECT_DIR" ]; then
 else
     echo "No scrapy.cfg found → running scraper.py" | tee -a "$LOG_FILE"
 
-    OUTPUT_FILE="${OUTPUT_DIR}/${BASE}_output.xlsx"
+    OUTPUT_FILE="${OUTPUT_DIR}/${BASE}_$(date +%Y%m%d_%H%M%S)_output.xlsx"
     RUN_CMD="python3 /app/scraper.py --input \"$INPUT_FILE\" --output \"$OUTPUT_FILE\""
 
     if command -v xvfb-run >/dev/null 2>&1; then
@@ -83,7 +83,7 @@ fi
 # ---- Upload outputs ----
 if [ -f "$OUTPUT_FILE" ]; then
     aws s3 cp "$OUTPUT_FILE" \
-        "s3://${S3_BUCKET}/${S3_OUTPUT_PREFIX}${BASE}_output.xlsx" \
+        "s3://${S3_BUCKET}/${S3_OUTPUT_PREFIX}${BASE}_$(date +%Y%m%d_%H%M%S)_output.xlsx" \
         --region "us-east-1" 2>&1 | tee -a "$LOG_FILE"
 else
     echo "Output not found → skipping S3 upload" | tee -a "$LOG_FILE"
