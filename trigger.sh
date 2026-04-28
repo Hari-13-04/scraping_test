@@ -50,7 +50,7 @@ INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 # ── Install system packages ───────────────────────────────────────────────────
 apt-get update -q
 DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
-    [docker.io](http://docker.io) git awscli curl python3 python3-boto3 jq nodejs npm
+    docker.io git awscli curl python3 python3-boto3 jq nodejs npm
 systemctl start docker
 systemctl enable docker
 usermod -aG docker ubuntu
