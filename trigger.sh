@@ -232,3 +232,21 @@ aws sns publish \
     --subject "$SUBJECT" \
     --message "$MESSAGE" \
     --region "$AWS_REGION" || true
+
+if [ "$FAIL_COUNT" -eq 0 ]; then
+    if [ "$AUTO_TERMINATE" = "true" ]; then
+        echo "Terminating instance..."
+        echo "Auto-terminating in 60 seconds..."
+        echo "STATUS=idle" > "$SCRAPER_DIR"/status.txt
+        sleep 60
+        aws ec2 terminate-instances --instance-ids "$INSTANCE_ID" --region "$AWS_REGION"
+    else
+        echo "STATUS=idle" > "$SCRAPER_DIR"/status.txt
+        echo "Stopping instance..."
+        sleep 60
+        aws ec2 stop-instances --instance-ids "$INSTANCE_ID" --region "$AWS_REGION"
+    fi
+else
+    echo "STATUS=error" > "$SCRAPER_DIR"/status.txt
+    echo "Failures occurred — instance will NOT stop"
+fi
