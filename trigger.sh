@@ -1,11 +1,9 @@
 #!/bin/bash
 set -e
+
 SCRAPER_DIR="/home/ubuntu/scraper"
-
 sudo chown -R ubuntu:ubuntu "$SCRAPER_DIR"
-
 LOG_FILE="$SCRAPER_DIR/logs/main.log"
-
 mkdir -p "$SCRAPER_DIR/logs"
 
 # ── Redirect to main.log + a timestamped run log ─────────────────────────────
@@ -36,12 +34,10 @@ if [ ! -f .env ]; then
     echo "STATUS=error" > "$SCRAPER_DIR/status.txt"
     exit 1
 fi
-
 source .env
 
 echo "Server ID : $SERVER_ID"
 echo "Region    : $AWS_REGION"
-
 echo "STATUS=running" > "$SCRAPER_DIR/status.txt"
 
 # ── Cleanup old containers ────────────────────────────────────────────────────
@@ -71,9 +67,9 @@ build_auth_url() {
     # Convert SSH to HTTPS first
     if echo "$url" | grep -q "^git@"; then
         if is_gitlab; then
-            url=$(echo "$url" | sed "s|git@gitlab.com:|https://gitlab.com/|")
+            url=$(echo "$url" | sed 's|git@gitlab\.com:|https://gitlab.com/|')
         else
-            url=$(echo "$url" | sed "s|git@github.com:|https://github.com/|")
+            url=$(echo "$url" | sed 's|git@github\.com:|https://github.com/|')
         fi
     fi
     if [ -n "$GITHUB_TOKEN" ]; then
@@ -88,7 +84,6 @@ build_auth_url() {
 
 # ── Pull latest repo ──────────────────────────────────────────────────────────
 echo "[INFO] Pulling latest code..."
-
 if [ -d "$SCRAPER_DIR/repo/.git" ]; then
     cd "$SCRAPER_DIR/repo"
     # Update remote URL with fresh token auth
@@ -129,7 +124,6 @@ FILE_NUM=0
 # ── Process files ─────────────────────────────────────────────────────────────
 while IFS= read -r fname; do
     [ -z "$fname" ] && continue
-
     FILE_NUM=$((FILE_NUM + 1))
     echo ""
     echo "--- File $FILE_NUM / $FILE_COUNT : $fname ---"
@@ -157,6 +151,7 @@ while IFS= read -r fname; do
         fi
         sleep 2
     done
+
     if [ "$SELENIUM_READY" -eq 0 ]; then
         echo "[WARN] Selenium did not become ready after 60s — proceeding anyway"
     fi
@@ -182,7 +177,6 @@ while IFS= read -r fname; do
         scraper-image
 
     EXIT_CODE=$($DOCKER inspect "scraper_${SAFE}" --format='{{.State.ExitCode}}')
-
     if [ "$EXIT_CODE" = "0" ]; then
         echo "[OK] SUCCESS: $fname"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
@@ -197,7 +191,6 @@ while IFS= read -r fname; do
     fi
 
     $DOCKER rm -f "scraper_${SAFE}" "selenium_${SAFE}" >/dev/null 2>&1 || true
-
 done < /tmp/my_files.txt
 
 echo ""
