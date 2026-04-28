@@ -74,6 +74,7 @@ echo "Downloading instance-agent.js from S3..."
 aws s3 cp "s3://$S3_BUCKET/agent/instance-agent.js" "$AGENT_DIR/instance-agent.js" \
     --region "us-east-1" \
     || { echo "ERROR: Failed to download instance-agent.js from s3://$S3_BUCKET/agent/instance-agent.js"; exit 1; }
+
 chmod +x "$AGENT_DIR/instance-agent.js"
 chown -R ubuntu:ubuntu "$AGENT_DIR"
 
@@ -81,7 +82,7 @@ chown -R ubuntu:ubuntu "$AGENT_DIR"
 cat > /etc/systemd/system/instance-agent.service << SVCEOF
 [Unit]
 Description=Instance Agent (Live Log / Error Log / Restart)
-After=[network.target](http://network.target)
+After=network.target
 [Service]
 Type=simple
 User=ubuntu
@@ -94,7 +95,7 @@ Environment=AGENT_TOKEN=${AGENT_TOKEN}
 Environment=AGENT_PORT=${AGENT_PORT}
 Environment=SCRAPER_DIR=${SCRAPER_DIR}
 [Install]
-WantedBy=[multi-user.target](http://multi-user.target)
+WantedBy=multi-user.target
 SVCEOF
 
 chown -R ubuntu:ubuntu "$SCRAPER_DIR"
@@ -249,7 +250,7 @@ while IFS= read -r fname; do
     echo ""
     echo "--- File $FILE_NUM / $FILE_COUNT: $fname ---"
     SAFE=$(echo "$fname" | python3 -c \
-        "import sys; s=[sys.stdin.read](http://sys.stdin.read)().strip(); print(s.replace('.','_').replace('-','_').replace(' ','_').lower())")
+        "import sys; s=sys.stdin.read().strip(); print(s.replace('.','_').replace('-','_').replace(' ','_').lower())")
     docker run -d \
         --name "selenium_${SAFE}" \
         --shm-size="2g" \
