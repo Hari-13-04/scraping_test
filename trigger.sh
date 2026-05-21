@@ -51,14 +51,26 @@ $DOCKER ps -aq --filter "name=selenium_" | xargs -r $DOCKER rm -f
 $DOCKER network rm scraper-net 2>/dev/null || true
 rm -f "$SCRAPER_DIR/output/"*.xlsx 2>/dev/null || true
 
-# ── Refresh IAM credentials ───────────────────────────────────────────────────
-echo "[INFO] Refreshing IAM credentials..."
-ROLE_NAME=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)
-CREDS=$(curl -s "http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE_NAME")
-export AWS_ACCESS_KEY_ID=$(echo "$CREDS"     | python3 -c "import sys,json;print(json.load(sys.stdin)['AccessKeyId'])")
-export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | python3 -c "import sys,json;print(json.load(sys.stdin)['SecretAccessKey'])")
-export AWS_SESSION_TOKEN=$(echo "$CREDS"     | python3 -c "import sys,json;print(json.load(sys.stdin)['Token'])")
-echo "[INFO] IAM credentials refreshed"
+
+
+# ── IAM credential refresh function ──────────────────────────────────────────
+# Called once at startup AND before each file, so tokens never expire mid-run.
+# EC2 instance profile tokens can expire after 1-6 hours; long Selenium runs
+# will hit this if credentials are only fetched once.
+refresh_iam_credentials() {
+    echo "[INFO] Refreshing IAM credentials..."
+    ROLE_NAME=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)
+    CREDS=$(curl -s "http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE_NAME")
+    export AWS_ACCESS_KEY_ID=$(echo "$CREDS"     | python3 -c "import sys,json;print(json.load(sys.stdin)['AccessKeyId'])")
+    export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | python3 -c "import sys,json;print(json.load(sys.stdin)['SecretAccessKey'])")
+    export AWS_SESSION_TOKEN=$(echo "$CREDS"     | python3 -c "import sys,json;print(json.load(sys.stdin)['Token'])")
+    echo "[INFO] IAM credentials refreshed"
+}
+
+# Initial refresh at startup
+refresh_iam_credentials
+
+
 
 # ── Detect GitLab by URL OR token prefix (glpat- = GitLab PAT) ───────────────
 is_gitlab() {
@@ -134,8 +146,8 @@ while IFS= read -r fname; do
     echo ""
     echo "--- File $FILE_NUM / $FILE_COUNT : $fname ---"
 
+    refresh_iam_credentials
     SAFE=$(echo "$fname" | tr '. -' '_' | tr '[:upper:]' '[:lower:]')
-
     echo "[INFO] Starting Selenium"
     # Force-remove any leftover containers with this name before starting fresh
     # (handles the case where a previous run crashed and set -e prevented cleanup)
@@ -211,6 +223,8 @@ if [ "$FAIL_COUNT" -eq 0 ]; then
 else
     echo "STATUS=error" > "$SCRAPER_DIR/status.txt"
 fi
+
+refresh_iam_credentials
 
 # ── Upload log to S3 ──────────────────────────────────────────────────────────
 aws s3 cp "$SCRAPER_DIR/logs/main.log" \
